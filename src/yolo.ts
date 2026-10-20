@@ -1,7 +1,8 @@
+import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import jpeg from 'jpeg-js';
-import type { TfliteModel } from 'react-native-fast-tflite';
+import { loadTensorflowModel, type TfliteModel } from 'react-native-fast-tflite';
 
 const INPUT_SIZE = 320;
 
@@ -13,6 +14,12 @@ export type Detection = {
   score: number;
   classId: number;
 };
+
+// Bản release chỉ có tên resource, fast-tflite không đọc được nên phải chép model ra file cache trước
+export async function loadModel(): Promise<TfliteModel> {
+  const [asset] = await Asset.loadAsync(require('../assets/model/yolo.tflite'));
+  return loadTensorflowModel({ url: asset.localUri ?? asset.uri }, []);
+}
 
 export async function detectObjects(model: TfliteModel, uri: string, threshold = 0.4) {
   const resized = await ImageManipulator.manipulate(uri)

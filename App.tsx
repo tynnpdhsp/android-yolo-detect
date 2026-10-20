@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -10,9 +10,9 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useTensorflowModel } from 'react-native-fast-tflite';
+import type { TfliteModel } from 'react-native-fast-tflite';
 import labels from './assets/model/labels.json';
-import { detectObjects, type Detection } from './src/yolo';
+import { detectObjects, loadModel, type Detection } from './src/yolo';
 
 const PICK_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
@@ -21,15 +21,20 @@ const PICK_OPTIONS: ImagePicker.ImagePickerOptions = {
 };
 
 export default function App() {
-  const plugin = useTensorflowModel(require('./assets/model/yolo.tflite'), []);
+  const [model, setModel] = useState<TfliteModel>();
+  const [modelError, setModelError] = useState<string>();
   const [imageUri, setImageUri] = useState<string>();
   const [detections, setDetections] = useState<Detection[]>([]);
   const [message, setMessage] = useState('Chụp hoặc chọn một ảnh để nhận diện.');
   const [busy, setBusy] = useState(false);
   const size = useWindowDimensions().width - 32;
 
+  useEffect(() => {
+    loadModel().then(setModel, (error: Error) => setModelError(error.message));
+  }, []);
+
   async function pickAndDetect(fromCamera: boolean) {
-    if (plugin.state !== 'loaded') return;
+    if (!model) return;
     if (fromCamera && !(await ImagePicker.requestCameraPermissionsAsync()).granted) {
       setMessage('Chưa được cấp quyền camera.');
       return;
@@ -44,7 +49,7 @@ export default function App() {
     setDetections([]);
     setBusy(true);
     try {
-      const { detections, inferenceMs } = await detectObjects(plugin.model, uri);
+      const { detections, inferenceMs } = await detectObjects(model, uri);
       setDetections(detections);
       setMessage(`${detections.length} vật thể · model chạy ${inferenceMs} ms`);
     } catch (error) {
@@ -54,13 +59,12 @@ export default function App() {
     }
   }
 
-  const status =
-    plugin.state === 'loading'
+  const status = modelError
+    ? `Không tải được model: ${modelError}`
+    : !model
       ? 'Đang tải model...'
-      : plugin.state === 'error'
-        ? `Không tải được model: ${plugin.error.message}`
-        : message;
-  const disabled = plugin.state !== 'loaded' || busy;
+      : message;
+  const disabled = !model || busy;
 
   return (
     <View style={styles.container}>
