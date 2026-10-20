@@ -23,11 +23,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          # basic: cache mã nguồn mở trên GitHub, không dùng dịch vụ cache thương mại mặc định
-          cache-provider: basic
-
       - name: Set version from tag
         run: |
           echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
@@ -36,6 +31,12 @@ jobs:
       - run: npm ci
 
       - run: npx expo prebuild --platform android --no-install
+
+      # Phải chạy sau prebuild: trước đó chưa có file Gradle để tính khoá cache
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          # basic: cache mã nguồn mở trên GitHub, không dùng dịch vụ cache thương mại mặc định
+          cache-provider: basic
 
       - name: Build APK
         working-directory: android
