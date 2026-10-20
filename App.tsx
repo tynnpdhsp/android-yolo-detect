@@ -83,7 +83,9 @@ export default function App() {
         {busy && <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#fff" />}
       </View>
 
-      <Text style={styles.status}>{status}</Text>
+      <Text style={styles.status} numberOfLines={3}>
+        {status}
+      </Text>
 
       <View style={styles.actions}>
         <ActionButton title="Chụp ảnh" disabled={disabled} onPress={() => pickAndDetect(true)} />
