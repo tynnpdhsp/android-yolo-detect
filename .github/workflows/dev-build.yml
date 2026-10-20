@@ -1,0 +1,47 @@
+name: Dev APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  APP_VARIANT: development
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - run: npm ci
+
+      - run: npx expo prebuild --platform android --no-install
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
+
+      - name: Publish to "dev" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk yolo-detect-dev.apk
+          gh release delete dev --cleanup-tag --yes || true
+          gh release create dev yolo-detect-dev.apk --prerelease --target "$GITHUB_SHA" \
+            --title "Dev build" --notes "Bản development build (expo-dev-client) từ commit $GITHUB_SHA"
