@@ -1,0 +1,50 @@
+name: Release APK
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          # basic: cache mã nguồn mở trên GitHub, không dùng dịch vụ cache thương mại mặc định
+          cache-provider: basic
+
+      - name: Set version from tag
+        run: |
+          echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          echo "APP_BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - run: npx expo prebuild --platform android --no-install
+
+      - name: Build APK
+        working-directory: android
+        # Chỉ build cho arm64-v8a (gần như mọi điện thoại hiện nay) để build nhanh, APK nhẹ
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "yolo-detect-$GITHUB_REF_NAME.apk"
+          gh release create "$GITHUB_REF_NAME" "yolo-detect-$GITHUB_REF_NAME.apk" --title "$GITHUB_REF_NAME" --generate-notes
