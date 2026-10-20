@@ -15,6 +15,8 @@ const config: ExpoConfig = {
   android: {
     package: isDev ? 'com.demo.yolodetect.dev' : 'com.demo.yolodetect',
     versionCode: Number(process.env.APP_BUILD_NUMBER ?? 1),
+    // expo-image-picker không tự khai báo, thiếu thì launchCameraAsync luôn bị từ chối quyền
+    permissions: ['android.permission.CAMERA'],
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/android-icon-foreground.png',
